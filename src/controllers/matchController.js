@@ -63,28 +63,32 @@ exports.getLikes = async (req, res) => {
   }
 };
 
-// Obtenir les utilisateurs à swiper
 exports.getSwipeUsers = async (req, res) => {
   try {
     const currentUser = await User.findById(req.user);
     if (!currentUser)
       return res.status(404).json({ msg: "Utilisateur non trouvé" });
 
-    // Exclure les utilisateurs déjà likés, les matches, les utilisateurs dislikés, et l'utilisateur lui-même
+    // Combiner toutes les listes d'exclusion en une seule
+    const excludedUsers = [
+      req.user,
+      ...currentUser.likedUsers,
+      ...currentUser.matches,
+      ...currentUser.dislikedUsers,
+    ];
+
+    // Requête corrigée
     const swipeUsers = await User.find({
-      _id: {
-        $ne: req.user, // Exclure l'utilisateur actuel
-        $nin: currentUser.likedUsers, // Exclure les utilisateurs déjà likés
-        $nin: currentUser.matches, // Exclure les matches
-        $nin: currentUser.dislikedUsers, // Exclure les utilisateurs dislikés
-      },
+      _id: { $nin: excludedUsers },
     }).select("-password"); // Exclure les mots de passe
 
     res.json(swipeUsers);
   } catch (err) {
+    console.error(err);
     res.status(500).send("Erreur serveur");
   }
 };
+
 exports.dislikeUser = async (req, res) => {
   try {
     const user = await User.findById(req.user);
